@@ -1,0 +1,32 @@
+# Node
+node_modules/
+.svelte-kit/
+build/
+dist/
+.env
+.idea/
+
+# Generated frontend build (output of `make build`)
+backend/sourcebook/static/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Sourcebook project data
+.sourcebook/
+
+# Misc
+.DS_Store
+*.log
