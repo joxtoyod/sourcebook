@@ -1,6 +1,6 @@
 # Sourcebook
 
-Sourcebook is an **architecture-first development tool** that flips the traditional coding workflow. Instead of writing code and reverse-engineering documentation from it, you **design your system visually first** — then an AI coding agent uses that diagram as its implementation spec.
+Sourcebook is an **architecture-first development tool** that lives inside any codebase. Run `sourcebook scan` and it renders an **interactive visual canvas** of your system — modules, services, and data flows mapped automatically from your source code, always in sync as the code evolves. Design and refine your architecture visually, then let an AI coding agent use that diagram as its authoritative implementation spec — not a pile of raw source files.
 
 ---
 
@@ -94,6 +94,7 @@ make install
 # From any project directory:
 sourcebook          # start the UI
 sourcebook scan     # scan codebase and generate diagram
+sourcebook scan  --force   # full rescan codebase and generate new diagram
 ```
 
 The `sourcebook` command starts the FastAPI backend and opens the UI in your browser. Everything runs on **one port** — no proxy, no separate processes.
