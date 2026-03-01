@@ -25,14 +25,18 @@ def _open_browser(url: str, delay: float = 1.5) -> None:
 @click.option("--host", default="127.0.0.1", show_default=True, help="Bind host")
 @click.option("--port", default=8000, show_default=True, help="Bind port")
 @click.option("--reload", is_flag=True, help="Enable auto-reload (development)")
-def main(ctx: click.Context, host: str, port: int, reload: bool) -> None:
+@click.option("--force", "-f", is_flag=True, help="Force re-scan, ignoring any cached index (implies scan)")
+def main(ctx: click.Context, host: str, port: int, reload: bool, force: bool) -> None:
     """Sourcebook — architecture-first development tool."""
     ctx.ensure_object(dict)
     ctx.obj["host"] = host
     ctx.obj["port"] = port
     ctx.obj["reload"] = reload
     if ctx.invoked_subcommand is None:
-        ctx.invoke(serve)
+        if force:
+            ctx.invoke(scan, force=force)
+        else:
+            ctx.invoke(serve)
 
 
 @main.command()
