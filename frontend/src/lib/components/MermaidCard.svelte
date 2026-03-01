@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { mermaidCards } from '$lib/stores/mermaid';
 	import type { MermaidCard } from '$lib/stores/mermaid';
+	import { selectedNode } from '$lib/stores/diagram';
 	import { sendMermaidDelete, sendMermaidMinimize, sendMermaidMove, sendMermaidRename, sendMermaidResize } from '$lib/ws';
 
 	export let card: MermaidCard;
@@ -177,6 +178,22 @@
 		if (e.key === 'Enter') commitTitle();
 		if (e.key === 'Escape') isEditingTitle = false;
 	}
+
+	function onSvgClick(e: MouseEvent) {
+		const anchor = (e.target as Element).closest('a');
+		if (!anchor) return;
+		const href = anchor.getAttribute('href') ?? anchor.getAttribute('xlink:href') ?? '';
+		if (!href || href.startsWith('http://') || href.startsWith('https://')) return;
+		e.preventDefault();
+		selectedNode.set({
+			id: '__mermaid_link__',
+			label: href,
+			type: 'module',
+			x: 0,
+			y: 0,
+			file_path: href,
+		});
+	}
 </script>
 
 <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -214,7 +231,9 @@
 		{#if renderError}
 			<p class="error">Could not render diagram: {renderError}</p>
 		{:else if svgOutput}
-			<div class="svg-wrap">{@html svgOutput}</div>
+			<!-- svelte-ignore a11y-click-events-have-key-events -->
+			<!-- svelte-ignore a11y-no-static-element-interactions -->
+			<div class="svg-wrap" on:click={onSvgClick}>{@html svgOutput}</div>
 		{:else}
 			<p class="loading">Rendering…</p>
 		{/if}
