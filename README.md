@@ -49,13 +49,7 @@ Scanning will show the architecture overview of the codebase:
 
 ![Sourcebook canvas showing a multi-module architecture with AI chat](docs/canvas.png)
 
-Ask AI to gain an overview of a flow:
-
-![Chat with AI, ask about the codebase](docs/ai-chat.gif)
-
-Investigate code directly in the canvas:
-
-![Code Pane](docs/view-code.png)
+[![Watch the video](https://i3.ytimg.com/vi/-Re1XumKz_A/maxresdefault.jpg)](https://youtu.be/-Re1XumKz_A)
 
 
 ---
