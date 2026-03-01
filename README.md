@@ -49,6 +49,8 @@ Scanning will show the architecture overview of the codebase:
 
 ![Sourcebook canvas showing a multi-module architecture with AI chat](docs/canvas.png)
 
+
+Demo Link: https://www.youtube.com/watch?v=-Re1XumKz_A
 [![Watch the video](https://i3.ytimg.com/vi/-Re1XumKz_A/maxresdefault.jpg)](https://youtu.be/-Re1XumKz_A)
 
 
