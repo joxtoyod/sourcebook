@@ -99,10 +99,15 @@ green "Installing Sourcebook to $INSTALL_DIR ..."
 
 if [ -d "$INSTALL_DIR/.git" ]; then
   info "Existing installation found — updating..."
+  # Ensure docs are excluded before pulling (handles upgrades from older installs)
+  git -C "$INSTALL_DIR" sparse-checkout set --no-cone '/*' '!/docs/' 2>/dev/null || true
   git -C "$INSTALL_DIR" pull --ff-only --quiet
 else
-  info "Cloning repository..."
-  git clone --depth=1 --quiet "$REPO" "$INSTALL_DIR"
+  info "Cloning repository (excluding docs)..."
+  # --filter=blob:none skips downloading blobs the server would send for docs images
+  # --sparse + sparse-checkout set keeps docs out of the working tree entirely
+  git clone --depth=1 --filter=blob:none --sparse --quiet "$REPO" "$INSTALL_DIR"
+  git -C "$INSTALL_DIR" sparse-checkout set --no-cone '/*' '!/docs/'
 fi
 
 # ── Build frontend ─────────────────────────────────────────────────────────
@@ -110,10 +115,21 @@ fi
 green "Building frontend..."
 
 cd "$INSTALL_DIR/frontend"
+_LOG=$(mktemp)
+
 info "Installing npm dependencies..."
-npm install --silent
+if ! npm install --silent > "$_LOG" 2>&1; then
+  cat "$_LOG"; rm -f "$_LOG"
+  red "npm install failed"
+fi
+
 info "Building SvelteKit app..."
-npm run build --silent
+if ! npm run build > "$_LOG" 2>&1; then
+  cat "$_LOG"; rm -f "$_LOG"
+  red "Frontend build failed"
+fi
+rm -f "$_LOG"
+
 info "Frontend built → backend/sourcebook/static/"
 
 # ── Ensure pipx is available ───────────────────────────────────────────────

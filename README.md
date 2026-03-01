@@ -1,44 +1,33 @@
 # Sourcebook
 
-> Design your system. Implement with AI.
-
 Sourcebook is an **architecture-first development tool** that flips the traditional coding workflow. Instead of writing code and reverse-engineering documentation from it, you **design your system visually first** — then an AI coding agent uses that diagram as its implementation spec.
 
 ---
 
 ## Why Sourcebook?
 
-Vibe coding is powerful — but it has three problems that compound as your project grows.
+In the era of AI-augmented development, the primary cognitive task of an engineer has shifted. The bottleneck is no longer how fast we can type, but how fast we can comprehend.
 
 ---
 
-### 1. Cognitive Overload
+### 🧠 The Challenge: Cognitive Overload
+AI agents can generate large, complex segments of code in seconds. This speed often creates a "transactional" experience where developers move from task to task without truly internalizing the design decisions or the problem space. We are losing the opportunity to truly "inhabit" the systems we build.
 
-AI coding tools are generous with output. Ask for a feature and you get 500 lines across 8 files, instantly. The code often works. But **reading and understanding it is now your problem**.
+> **The Sourcebook Fix: Separate Architecture from Implementation**
+> Sourcebook forces a strategic pause. By mapping out data flows and structural design *before* the first prompt, you reclaim ownership of the system architecture before automating the syntax. Architecture as Code!
 
-Most developers can't hold a large, AI-generated codebase in their head. They lose the thread of their own system. Reviews become rubber stamps. Bugs hide in code nobody fully understood.
+### 🏚️ The Challenge: Documentation Decay
+We’ve been trained not to trust comments. Outdated READMEs, stale TODOs, and comments that contradict the code are the norm. The "real" documentation is the code itself, but AI-generated code is often too dense to parse quickly, creating a disconnect between design and reality.
 
-Sourcebook puts the architecture front and center — a visual diagram where every module, service, and data flow is explicit. Before a single line is written, you and the AI agree on *what the system is*. When code is generated, you already know where it belongs.
+> **The Sourcebook Fix: Documentation as a Living System**
+> Sourcebook turns your codebase into a single source of truth for both humans and AI. It generates a "living" visual architecture that evolves with your code. When the system changes, the map updates—ensuring your mental model (and your AI’s context) is always accurate.
 
----
+### 🪙 The Challenge: The "Token Tax"
+AI-assisted coding is expensive—not just in dollars, but in the time lost to "hallucination loops." Feeding an AI thousands of lines of raw code just to "figure out the architecture" is a massive waste of context window and token budget.
 
-### 2. Your Codebase Is a Living Knowledge Base
+> **The Sourcebook Fix: Precision Context**
+> By providing a clear implementation spec derived from a visual architecture, you give the AI a surgical strike zone. This reduces iterations, minimizes errors, and allows you to strategically allocate your "token budget" to the parts of the system that actually need it.
 
-Code changes. AI-generated code changes fast. The mental model you built last week is already stale.
-
-Sourcebook treats your codebase as a **living knowledge base** rather than a pile of files. Static analysis (Tree-sitter) continuously parses your source and keeps the canvas diagram in sync with what actually exists. Drift between the design and the reality is surfaced immediately — not discovered six sprints later.
-
-Human corrections are persisted as ground truth and survive future re-parses. The diagram stays honest as the system evolves.
-
----
-
-### 3. Design First, Spend Less
-
-Sending a sprawling codebase as context to a frontier model on every request is expensive. And expensive models don't automatically produce better systems — they produce more code.
-
-Sourcebook inverts the cost curve: **use a capable model once to produce a precise, structured spec from your architecture diagram**. That spec — node by node, edge by edge — becomes the implementation blueprint. A cheaper, faster model can then execute each step faithfully, because the hard thinking is already done.
-
-Design at the top. Implement at the bottom. Pay accordingly.
 
 ---
 
@@ -54,9 +43,20 @@ Design at the top. Implement at the bottom. Pay accordingly.
 
 ## Demo
 
-![Sourcebook canvas showing a multi-module architecture with AI chat](docs/demo.png)
+Sourcebook lives in the codebase after running `sourcebook scan` under hidden directory `.sourcebook`.
 
-> *Place a screenshot or GIF here once the UI is stable.*
+Scanning will show the architecture overview of the codebase:
+
+![Sourcebook canvas showing a multi-module architecture with AI chat](docs/canvas.png)
+
+Ask AI to gain an overview of a flow:
+
+![Chat with AI, ask about the codebase](docs/ai-chat.gif)
+
+Investigate code directly in the canvas:
+
+![Code Pane](docs/view-code.png)
+
 
 ---
 
@@ -77,6 +77,8 @@ Sourcebook uses the `claude` CLI subprocess for AI — **no API key required**. 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/joxtoyod/sourcebook/main/install.sh | bash
 ```
+
+For smoother installation and ensuring the path is correctly setup, I recommend installing [pipx](https://pipx.pypa.io/) prior to running the bash command 
 
 This clones the repo, builds the frontend, and installs the `sourcebook` CLI globally. Run it again to update.
 
@@ -144,30 +146,17 @@ Browser → http://localhost:8000
            └── SQLite         → diagram layout, overrides, history
 ```
 
-### Key Files
-
-| File | Purpose |
-|---|---|
-| `backend/sourcebook/main.py` | FastAPI app entry point, static file serving |
-| `backend/sourcebook/ws_handler.py` | WebSocket message loop, AI streaming, persistence |
-| `backend/sourcebook/ai_agent.py` | Claude CLI subprocess, prompt building, stream parsing |
-| `backend/sourcebook/database.py` | SQLite schema, diagram CRUD, override persistence |
-| `backend/sourcebook/scanner.py` | Static analysis, codebase → diagram extraction |
-| `frontend/src/lib/components/Canvas.svelte` | SVG canvas with pan/zoom/drag/drop |
-| `frontend/src/lib/components/ChatPane.svelte` | Chat UI connected via WebSocket |
-| `frontend/src/lib/stores/diagram.ts` | Diagram state (nodes/edges) as a Svelte store |
-
 ### Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | SvelteKit (TypeScript) |
-| Backend | Python FastAPI |
-| AI | Claude via `claude` CLI subprocess |
+| Layer | Technology                          |
+|---|-------------------------------------|
+| Frontend | SvelteKit (TypeScript)              |
+| Backend | Python FastAPI                      |
+| AI | Claude via `claude` Agent SDK       |
 | Real-time | WebSocket (bidirectional streaming) |
-| Canvas | Custom SVG renderer |
-| Code analysis | Tree-sitter (multi-language) |
-| Database | SQLite (local persistence) |
+| Canvas | Custom SVG renderer                 |
+| Code analysis | Tree-sitter (multi-language)        |
+| Database | SQLite (local persistence)          |
 
 ---
 
@@ -177,14 +166,6 @@ Browser → http://localhost:8000
 2. **Refine** — The AI generates a detailed diagram. Review, adjust, and approve. Each node and edge becomes a structured spec.
 3. **Implement** — Trigger the AI coding agent to generate code module-by-module, using the diagram as its authoritative context.
 4. **Sync** — As code evolves, Sourcebook re-parses the source and updates the diagram. Drift surfaces. Human overrides persist.
-
----
-
-## What Sourcebook Is Not
-
-- **Not an IDE.** It sits alongside VS Code or whatever editor you use.
-- **Not just a diagramming tool.** Unlike Miro or draw.io, diagrams are backed by real code structure and drive actual implementation.
-- **Not a CI/CD tool.** It doesn't build, test, or deploy.
 
 ---
 

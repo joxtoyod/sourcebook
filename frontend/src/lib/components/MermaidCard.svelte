@@ -67,7 +67,15 @@
 			});
 			renderId += 1;
 			const { svg } = await mermaid.render(`mermaid-card-${card.id}-${renderId}`, src);
-			svgOutput = svg;
+			// Strip href/xlink:href from <a> elements so the browser status bar doesn't
+			// show raw vscode:// URIs on hover. Values are preserved in data-href for
+			// the click handler to read.
+			svgOutput = svg.replace(/<a\b([^>]*)>/g, (_match, attrs) => {
+				const newAttrs = attrs
+					.replace(/\s+xlink:href="([^"]*)"/g, ' data-href="$1"')
+					.replace(/\s+href="([^"]*)"/g, ' data-href="$1"');
+				return `<a${newAttrs}>`;
+			});
 		} catch (e) {
 			renderError = e instanceof Error ? e.message : 'Failed to render diagram';
 		}
@@ -182,16 +190,27 @@
 	function onSvgClick(e: MouseEvent) {
 		const anchor = (e.target as Element).closest('a');
 		if (!anchor) return;
-		const href = anchor.getAttribute('href') ?? anchor.getAttribute('xlink:href') ?? '';
+		// Read from data-href (set during SVG post-processing); fall back to href
+		// in case a browser or Mermaid version re-adds the attribute.
+		const href = anchor.dataset.href ?? anchor.getAttribute('href') ?? anchor.getAttribute('xlink:href') ?? '';
 		if (!href || href.startsWith('http://') || href.startsWith('https://')) return;
 		e.preventDefault();
+
+		// Convert vscode://file/<path> URIs to plain filesystem paths the backend can serve.
+		let filePath = href;
+		if (filePath.startsWith('vscode://file/')) {
+			filePath = decodeURIComponent(filePath.slice('vscode://file'.length));
+			// Windows paths arrive as /C:/...; strip the leading slash.
+			if (/^\/[A-Za-z]:/.test(filePath)) filePath = filePath.slice(1);
+		}
+
 		selectedNode.set({
 			id: '__mermaid_link__',
 			label: href,
 			type: 'module',
 			x: 0,
 			y: 0,
-			file_path: href,
+			file_path: filePath,
 		});
 	}
 </script>
