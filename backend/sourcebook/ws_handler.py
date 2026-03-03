@@ -28,6 +28,7 @@ from sourcebook.database import (
     store_spec_path, update_mermaid_diagram, update_mermaid_syntax_for_group, update_proposed_feature,
 )
 from sourcebook.scanner import load_from_cache
+from sourcebook.symbol_store import get_symbol_context
 from sourcebook.utils import parse_diagram_update, parse_mermaid_diagram
 
 
@@ -67,8 +68,12 @@ async def handle_websocket(websocket: WebSocket) -> None:
                 conversation.append({"role": "user", "content": content})
                 full_response = ""
 
+                diagram_nodes = (msg.get("diagram_context") or {}).get("nodes", [])
+                symbol_ctx = await get_symbol_context(content, diagram_nodes)
+
                 async for chunk in stream_response(
-                    conversation, msg.get("diagram_context"), requirements_text, project_context=project_context
+                    conversation, msg.get("diagram_context"), requirements_text,
+                    project_context=project_context, symbol_context=symbol_ctx,
                 ):
                     full_response += chunk
                     await websocket.send_json({"type": "chat_chunk", "content": chunk})
@@ -162,9 +167,15 @@ async def handle_websocket(websocket: WebSocket) -> None:
                     )
 
                 full_response = ""
+                feat_diagram_nodes = (diagram_ctx or {}).get("nodes", [])
+                feat_symbol_ctx = await get_symbol_context(
+                    f"{feature_name} {feature_requirements} {intentions}", feat_diagram_nodes,
+                )
+
                 async for chunk in stream_feature_response(
                     feature_name, feature_requirements, intentions, diagram_ctx,
                     project_requirements=requirements_text, project_context=project_context,
+                    symbol_context=feat_symbol_ctx,
                 ):
                     full_response += chunk
                     await websocket.send_json({"type": "chat_chunk", "content": chunk})
@@ -233,10 +244,14 @@ async def handle_websocket(websocket: WebSocket) -> None:
                     )
 
                 # Stream AI response
+                edit_diagram_nodes = (msg.get("diagram_context") or {}).get("nodes", [])
+                edit_symbol_ctx = await get_symbol_context(content, edit_diagram_nodes)
+
                 full_response = ""
                 async for chunk in stream_edit_feature_response(
                     content, feature_group_id, msg.get("diagram_context"),
                     project_requirements=requirements_text, project_context=project_context,
+                    symbol_context=edit_symbol_ctx,
                 ):
                     full_response += chunk
                     await websocket.send_json({"type": "chat_chunk", "content": chunk})
@@ -286,12 +301,16 @@ async def handle_websocket(websocket: WebSocket) -> None:
                 group_label = target_group.get("label", feature_group_id)
 
                 # Stream spec generation
+                spec_diagram_nodes = current_nodes
+                spec_symbol_ctx = await get_symbol_context(group_label, spec_diagram_nodes)
+
                 spec_text = ""
                 try:
                     async for chunk in stream_spec_response(
                         feature_group_id, group_label,
                         {"nodes": current_nodes, "edges": current_edges, "groups": current_groups},
                         project_requirements=requirements_text, project_context=project_context,
+                        symbol_context=spec_symbol_ctx,
                     ):
                         spec_text += chunk
                         await websocket.send_json({"type": "spec_chunk", "text": chunk})

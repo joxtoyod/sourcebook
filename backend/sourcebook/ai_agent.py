@@ -266,6 +266,7 @@ def _build_prompt(
     diagram_str: str,
     requirements: str | None = None,
     project_context: str | None = None,
+    symbol_context: str | None = None,
 ) -> str:
     """Combine system context, diagram state, and conversation into a single prompt."""
     parts = [SYSTEM_PROMPT]
@@ -275,6 +276,9 @@ def _build_prompt(
 
     if project_context:
         parts.append(f"Project Structure (for reference):\n{project_context}")
+
+    if symbol_context:
+        parts.append(f"Relevant Code Symbols:\n{symbol_context}")
 
     parts.append(f"Current Architecture Diagram:\n{diagram_str}")
 
@@ -298,6 +302,7 @@ def _build_feature_prompt(
     diagram_context: dict | None,
     project_requirements: str | None = None,
     project_context: str | None = None,
+    symbol_context: str | None = None,
 ) -> str:
     """Build the prompt for a feature proposal request."""
     existing_nodes = (diagram_context or {}).get("nodes", [])
@@ -317,6 +322,9 @@ def _build_feature_prompt(
 
     if project_context:
         parts.append(f"Project Structure (for reference):\n{project_context}")
+
+    if symbol_context:
+        parts.append(f"Relevant Code Symbols:\n{symbol_context}")
 
     parts.append(f"Current Architecture Diagram:\n{diagram_str}")
     parts.append(
@@ -362,6 +370,7 @@ async def stream_response(
     diagram_context: dict | None,
     requirements: str | None = None,
     project_context: str | None = None,
+    symbol_context: str | None = None,
 ) -> AsyncIterator[str]:
     """Call the claude CLI and stream text chunks back to the caller."""
     claude_bin = shutil.which(settings.claude_bin)
@@ -369,7 +378,7 @@ async def stream_response(
         yield f"[Error: '{settings.claude_bin}' not found in PATH. Is Claude Code installed?]"
         return
 
-    prompt = _build_prompt(history, _format_diagram(diagram_context or {}), requirements, project_context)
+    prompt = _build_prompt(history, _format_diagram(diagram_context or {}), requirements, project_context, symbol_context)
 
     cmd = [
         claude_bin,
@@ -417,6 +426,7 @@ def _build_edit_feature_prompt(
     diagram_context: dict | None,
     project_requirements: str | None = None,
     project_context: str | None = None,
+    symbol_context: str | None = None,
 ) -> str:
     """Build the prompt for an edit-feature request."""
     system = EDIT_FEATURE_SYSTEM_PROMPT.replace("{group_id}", group_id)
@@ -429,6 +439,9 @@ def _build_edit_feature_prompt(
 
     if project_context:
         parts.append(f"Project Structure (for reference):\n{project_context}")
+
+    if symbol_context:
+        parts.append(f"Relevant Code Symbols:\n{symbol_context}")
 
     parts.append(f"Current Architecture Diagram:\n{diagram_str}")
     parts.append(
@@ -445,6 +458,7 @@ async def stream_edit_feature_response(
     diagram_context: dict | None,
     project_requirements: str | None = None,
     project_context: str | None = None,
+    symbol_context: str | None = None,
 ) -> AsyncIterator[str]:
     """Call the claude CLI to edit a proposed feature group and stream text chunks back."""
     claude_bin = shutil.which(settings.claude_bin)
@@ -453,7 +467,7 @@ async def stream_edit_feature_response(
         return
 
     prompt = _build_edit_feature_prompt(
-        content, group_id, diagram_context, project_requirements, project_context,
+        content, group_id, diagram_context, project_requirements, project_context, symbol_context,
     )
 
     cmd = [
@@ -503,6 +517,7 @@ def _build_spec_prompt(
     diagram_context: dict | None,
     project_requirements: str | None = None,
     project_context: str | None = None,
+    symbol_context: str | None = None,
 ) -> str:
     """Build the prompt for spec generation of a proposed feature group."""
     ctx = diagram_context or {}
@@ -550,6 +565,9 @@ def _build_spec_prompt(
     if project_context:
         parts.append(f"Project Structure (for reference):\n{project_context}")
 
+    if symbol_context:
+        parts.append(f"Relevant Code Symbols:\n{symbol_context}")
+
     # Existing system context
     parts.append(
         f"Existing system nodes (non-proposed):\n{_fmt_nodes(existing_nodes)}\n\n"
@@ -577,6 +595,7 @@ async def stream_spec_response(
     diagram_context: dict | None,
     project_requirements: str | None = None,
     project_context: str | None = None,
+    symbol_context: str | None = None,
 ) -> AsyncIterator[str]:
     """Call the claude CLI to generate a feature spec and stream text chunks back."""
     claude_bin = shutil.which(settings.claude_bin)
@@ -585,7 +604,7 @@ async def stream_spec_response(
         return
 
     prompt = _build_spec_prompt(
-        feature_group_id, group_label, diagram_context, project_requirements, project_context,
+        feature_group_id, group_label, diagram_context, project_requirements, project_context, symbol_context,
     )
 
     cmd = [
@@ -636,6 +655,7 @@ async def stream_feature_response(
     diagram_context: dict | None,
     project_requirements: str | None = None,
     project_context: str | None = None,
+    symbol_context: str | None = None,
 ) -> AsyncIterator[str]:
     """Call the claude CLI to propose a new feature and stream text chunks back."""
     claude_bin = shutil.which(settings.claude_bin)
@@ -645,7 +665,7 @@ async def stream_feature_response(
 
     prompt = _build_feature_prompt(
         feature_name, requirements, intentions, diagram_context,
-        project_requirements, project_context,
+        project_requirements, project_context, symbol_context,
     )
 
     cmd = [

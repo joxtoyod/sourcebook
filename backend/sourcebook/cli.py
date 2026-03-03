@@ -80,6 +80,7 @@ async def _do_scan(ctx: click.Context, force: bool = False) -> None:
     from sourcebook.config import settings  # noqa: PLC0415
     from sourcebook.database import get_diagram, init_db, save_diagram, set_project_name, snapshot_diagram  # noqa: PLC0415
     from sourcebook.scanner import build_condensed_summary, build_project_summary, load_from_cache, save_to_cache  # noqa: PLC0415
+    from sourcebook.symbol_store import build_symbol_index  # noqa: PLC0415
     from sourcebook.utils import parse_diagram_update  # noqa: PLC0415
 
     root = Path.cwd()
@@ -93,6 +94,10 @@ async def _do_scan(ctx: click.Context, force: bool = False) -> None:
             click.echo("  Tip: pass --force / -f to run a fresh scan")
 
     await init_db()
+
+    click.echo("Building symbol index ...")
+    symbol_count = await build_symbol_index(root)
+    click.echo(f"Symbols indexed: {symbol_count}")
 
     if cached is None:
         click.echo(f"Scanning {root} ...")

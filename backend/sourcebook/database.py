@@ -130,6 +130,10 @@ async def init_db() -> None:
             pass  # Column already exists
         await db.commit()
 
+    # Create symbol index tables (separate module manages the schema)
+    from sourcebook.symbol_store import init_symbol_tables  # noqa: PLC0415
+    await init_symbol_tables()
+
 
 async def get_diagram() -> tuple[list[dict], list[dict], list[dict]]:
     async with aiosqlite.connect(settings.db_path) as db:
