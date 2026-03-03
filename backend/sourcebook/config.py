@@ -34,5 +34,10 @@ class Settings(BaseSettings):
         """Path to the cached condensed project index markdown file."""
         return Path(self.db_path).parent / "project-index.md"
 
+    @property
+    def log_path(self) -> Path:
+        """Path to the agent activity log file."""
+        return Path(self.db_path).parent / "agent.log"
+
 
 settings = Settings()

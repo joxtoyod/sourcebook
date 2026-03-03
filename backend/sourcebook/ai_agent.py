@@ -371,6 +371,7 @@ async def stream_response(
     requirements: str | None = None,
     project_context: str | None = None,
     symbol_context: str | None = None,
+    log_callback=None,
 ) -> AsyncIterator[str]:
     """Call the claude CLI and stream text chunks back to the caller."""
     claude_bin = shutil.which(settings.claude_bin)
@@ -389,6 +390,9 @@ async def stream_response(
         prompt,
     ]
 
+    if log_callback:
+        await log_callback(f"Spawning Claude (model: {settings.claude_model})...")
+
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdin=asyncio.subprocess.DEVNULL,
@@ -397,6 +401,9 @@ async def stream_response(
         cwd=settings.project_root,
         limit=10 * 1024 * 1024,  # 10 MB — default 64 KB is too small for large AI responses
     )
+
+    if log_callback:
+        await log_callback(f"Claude subprocess started (PID: {proc.pid})")
 
     assert proc.stdout is not None  # always set when PIPE is used
     async for raw_line in proc.stdout:
@@ -413,6 +420,8 @@ async def stream_response(
             yield text
 
     rc = await proc.wait()
+    if log_callback:
+        await log_callback(f"Claude subprocess exited (code: {rc})")
     if rc != 0:
         assert proc.stderr is not None
         err = (await proc.stderr.read()).decode("utf-8", errors="replace").strip()
@@ -459,6 +468,7 @@ async def stream_edit_feature_response(
     project_requirements: str | None = None,
     project_context: str | None = None,
     symbol_context: str | None = None,
+    log_callback=None,
 ) -> AsyncIterator[str]:
     """Call the claude CLI to edit a proposed feature group and stream text chunks back."""
     claude_bin = shutil.which(settings.claude_bin)
@@ -480,6 +490,9 @@ async def stream_edit_feature_response(
         prompt,
     ]
 
+    if log_callback:
+        await log_callback(f"Spawning Claude (model: {settings.claude_model})...")
+
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdin=asyncio.subprocess.DEVNULL,
@@ -488,6 +501,9 @@ async def stream_edit_feature_response(
         cwd=settings.project_root,
         limit=10 * 1024 * 1024,
     )
+
+    if log_callback:
+        await log_callback(f"Claude subprocess started (PID: {proc.pid})")
 
     assert proc.stdout is not None
     async for raw_line in proc.stdout:
@@ -504,6 +520,8 @@ async def stream_edit_feature_response(
             yield text
 
     rc = await proc.wait()
+    if log_callback:
+        await log_callback(f"Claude subprocess exited (code: {rc})")
     if rc != 0:
         assert proc.stderr is not None
         err = (await proc.stderr.read()).decode("utf-8", errors="replace").strip()
@@ -596,6 +614,7 @@ async def stream_spec_response(
     project_requirements: str | None = None,
     project_context: str | None = None,
     symbol_context: str | None = None,
+    log_callback=None,
 ) -> AsyncIterator[str]:
     """Call the claude CLI to generate a feature spec and stream text chunks back."""
     claude_bin = shutil.which(settings.claude_bin)
@@ -617,6 +636,9 @@ async def stream_spec_response(
         prompt,
     ]
 
+    if log_callback:
+        await log_callback(f"Spawning Claude (model: {settings.claude_model})...")
+
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdin=asyncio.subprocess.DEVNULL,
@@ -625,6 +647,9 @@ async def stream_spec_response(
         cwd=settings.project_root,
         limit=10 * 1024 * 1024,
     )
+
+    if log_callback:
+        await log_callback(f"Claude subprocess started (PID: {proc.pid})")
 
     assert proc.stdout is not None
     async for raw_line in proc.stdout:
@@ -641,6 +666,8 @@ async def stream_spec_response(
             yield text
 
     rc = await proc.wait()
+    if log_callback:
+        await log_callback(f"Claude subprocess exited (code: {rc})")
     if rc != 0:
         assert proc.stderr is not None
         err = (await proc.stderr.read()).decode("utf-8", errors="replace").strip()
@@ -656,6 +683,7 @@ async def stream_feature_response(
     project_requirements: str | None = None,
     project_context: str | None = None,
     symbol_context: str | None = None,
+    log_callback=None,
 ) -> AsyncIterator[str]:
     """Call the claude CLI to propose a new feature and stream text chunks back."""
     claude_bin = shutil.which(settings.claude_bin)
@@ -678,6 +706,9 @@ async def stream_feature_response(
         prompt,
     ]
 
+    if log_callback:
+        await log_callback(f"Spawning Claude (model: {settings.claude_model})...")
+
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdin=asyncio.subprocess.DEVNULL,
@@ -686,6 +717,9 @@ async def stream_feature_response(
         cwd=settings.project_root,
         limit=10 * 1024 * 1024,
     )
+
+    if log_callback:
+        await log_callback(f"Claude subprocess started (PID: {proc.pid})")
 
     assert proc.stdout is not None
     async for raw_line in proc.stdout:
@@ -702,6 +736,8 @@ async def stream_feature_response(
             yield text
 
     rc = await proc.wait()
+    if log_callback:
+        await log_callback(f"Claude subprocess exited (code: {rc})")
     if rc != 0:
         assert proc.stderr is not None
         err = (await proc.stderr.read()).decode("utf-8", errors="replace").strip()

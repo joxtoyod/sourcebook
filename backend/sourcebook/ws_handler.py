@@ -19,6 +19,7 @@ def _short_title(prompt: str, max_len: int = 45) -> str:
     truncated = text[:max_len].rsplit(" ", 1)[0]
     return truncated + "…"
 
+from sourcebook.agent_logger import agent_logger
 from sourcebook.ai_agent import stream_edit_feature_response, stream_feature_response, stream_response, stream_spec_response
 from sourcebook.config import settings
 from sourcebook.database import (
@@ -33,6 +34,7 @@ from sourcebook.utils import parse_diagram_update, parse_mermaid_diagram
 
 
 async def handle_websocket(websocket: WebSocket) -> None:
+    agent_logger.attach(websocket)
     requirements_text = await get_requirements()
 
     # Load cached project index (condensed tree) for AI context
@@ -65,15 +67,19 @@ async def handle_websocket(websocket: WebSocket) -> None:
                 if not content:
                     continue
 
+                await agent_logger.info("Chat received")
                 conversation.append({"role": "user", "content": content})
                 full_response = ""
 
                 diagram_nodes = (msg.get("diagram_context") or {}).get("nodes", [])
+                await agent_logger.info("Building symbol context...")
                 symbol_ctx = await get_symbol_context(content, diagram_nodes)
 
+                await agent_logger.info("Streaming response...")
                 async for chunk in stream_response(
                     conversation, msg.get("diagram_context"), requirements_text,
                     project_context=project_context, symbol_context=symbol_ctx,
+                    log_callback=agent_logger.info,
                 ):
                     full_response += chunk
                     await websocket.send_json({"type": "chat_chunk", "content": chunk})
@@ -89,6 +95,7 @@ async def handle_websocket(websocket: WebSocket) -> None:
                         await snapshot_diagram(current_nodes, current_edges, content, current_groups)
                     await save_diagram(update["nodes"], update.get("edges", []), update.get("groups", []))
                     nodes, edges, groups = await get_diagram()
+                    await agent_logger.info(f"Updating diagram ({len(nodes)} nodes)...")
                     await websocket.send_json({"type": "diagram_update", "nodes": nodes, "edges": edges, "groups": groups})
                 else:
                     # Check for explanatory Mermaid diagram (mutually exclusive with diagram_update)
@@ -100,6 +107,7 @@ async def handle_websocket(websocket: WebSocket) -> None:
                         card_x, card_y = 80 + offset, 80 + offset
                         title = _short_title(content)
                         await save_mermaid_diagram(mermaid_id, mermaid_syntax, x=card_x, y=card_y, title=title)
+                        await agent_logger.info("Mermaid diagram created")
                         await websocket.send_json({
                             "type": "mermaid_diagram",
                             "id": mermaid_id,
@@ -157,6 +165,8 @@ async def handle_websocket(websocket: WebSocket) -> None:
                 if not feature_name:
                     continue
 
+                await agent_logger.info(f"Feature request: '{feature_name}'")
+
                 # Snapshot current diagram before applying feature proposal
                 current_nodes, current_edges, current_groups = await get_diagram()
                 if current_nodes:
@@ -172,10 +182,12 @@ async def handle_websocket(websocket: WebSocket) -> None:
                     f"{feature_name} {feature_requirements} {intentions}", feat_diagram_nodes,
                 )
 
+                await agent_logger.info("Streaming feature proposal...")
                 async for chunk in stream_feature_response(
                     feature_name, feature_requirements, intentions, diagram_ctx,
                     project_requirements=requirements_text, project_context=project_context,
                     symbol_context=feat_symbol_ctx,
+                    log_callback=agent_logger.info,
                 ):
                     full_response += chunk
                     await websocket.send_json({"type": "chat_chunk", "content": chunk})
@@ -186,6 +198,7 @@ async def handle_websocket(websocket: WebSocket) -> None:
                 if update and "nodes" in update:
                     await save_diagram(update["nodes"], update.get("edges", []), update.get("groups", []))
                     nodes, edges, groups = await get_diagram()
+                    await agent_logger.info("Feature diagram saved")
                     await websocket.send_json({"type": "diagram_update", "nodes": nodes, "edges": edges, "groups": groups})
 
                 # Also emit a proposed mermaid flow diagram if the AI included one
@@ -225,9 +238,12 @@ async def handle_websocket(websocket: WebSocket) -> None:
                 if not feature_group_id or not content:
                     continue
 
+                await agent_logger.info(f"Editing feature: '{feature_group_id}'")
+
                 # Guard: group must exist
                 current_nodes, current_edges, current_groups = await get_diagram()
                 if not any(g["id"] == feature_group_id for g in current_groups):
+                    await agent_logger.error(f"Group '{feature_group_id}' not found")
                     await websocket.send_json({
                         "type": "chat_chunk",
                         "content": f"[Error: proposed group '{feature_group_id}' not found — it may have been accepted or rejected already.]",
@@ -252,6 +268,7 @@ async def handle_websocket(websocket: WebSocket) -> None:
                     content, feature_group_id, msg.get("diagram_context"),
                     project_requirements=requirements_text, project_context=project_context,
                     symbol_context=edit_symbol_ctx,
+                    log_callback=agent_logger.info,
                 ):
                     full_response += chunk
                     await websocket.send_json({"type": "chat_chunk", "content": chunk})
@@ -282,6 +299,7 @@ async def handle_websocket(websocket: WebSocket) -> None:
             elif msg_type == "accept_feature":
                 feature_group_id = msg.get("feature_group_id", "")
                 if feature_group_id:
+                    await agent_logger.info(f"Feature accepted: '{feature_group_id}'")
                     await accept_feature(feature_group_id)
                     nodes, edges, groups = await get_diagram()
                     await websocket.send_json({"type": "diagram_update", "nodes": nodes, "edges": edges, "groups": groups})
@@ -304,6 +322,7 @@ async def handle_websocket(websocket: WebSocket) -> None:
                 spec_diagram_nodes = current_nodes
                 spec_symbol_ctx = await get_symbol_context(group_label, spec_diagram_nodes)
 
+                await agent_logger.info(f"Generating spec for '{group_label}'...")
                 spec_text = ""
                 try:
                     async for chunk in stream_spec_response(
@@ -311,10 +330,12 @@ async def handle_websocket(websocket: WebSocket) -> None:
                         {"nodes": current_nodes, "edges": current_edges, "groups": current_groups},
                         project_requirements=requirements_text, project_context=project_context,
                         symbol_context=spec_symbol_ctx,
+                        log_callback=agent_logger.info,
                     ):
                         spec_text += chunk
                         await websocket.send_json({"type": "spec_chunk", "text": chunk})
                 except Exception as exc:
+                    await agent_logger.error(f"Spec generation failed: {exc}")
                     await websocket.send_json({"type": "spec_error", "error": str(exc)})
                     continue
 
@@ -325,7 +346,9 @@ async def handle_websocket(websocket: WebSocket) -> None:
                 try:
                     spec_dir.mkdir(parents=True, exist_ok=True)
                     (spec_dir / "spec.md").write_text(spec_text, encoding="utf-8")
+                    await agent_logger.info(f"Spec written to {spec_path_rel}")
                 except OSError as exc:
+                    await agent_logger.error(f"Could not write spec: {exc}")
                     await websocket.send_json({"type": "spec_error", "error": f"Could not write spec: {exc}"})
                     continue
 
@@ -341,9 +364,14 @@ async def handle_websocket(websocket: WebSocket) -> None:
             elif msg_type == "reject_feature":
                 feature_group_id = msg.get("feature_group_id", "")
                 if feature_group_id:
+                    await agent_logger.info(f"Feature rejected: '{feature_group_id}'")
                     await reject_feature(feature_group_id)
                     nodes, edges, groups = await get_diagram()
                     await websocket.send_json({"type": "diagram_update", "nodes": nodes, "edges": edges, "groups": groups})
+
+            elif msg_type == "get_logs":
+                entries = agent_logger.read_tail(200)
+                await websocket.send_json({"type": "agent_logs_history", "entries": entries})
 
             elif msg_type == "accept_node":
                 node_id = msg.get("node_id", "")
@@ -354,3 +382,5 @@ async def handle_websocket(websocket: WebSocket) -> None:
 
     except WebSocketDisconnect:
         pass
+    finally:
+        agent_logger.detach()

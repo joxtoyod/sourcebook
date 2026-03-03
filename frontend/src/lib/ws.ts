@@ -13,12 +13,19 @@ export interface ChatMessage {
 	timestamp: string;
 }
 
+export interface AgentLogEntry {
+	ts: string;
+	level: string;
+	msg: string;
+}
+
 export const messages = writable<ChatMessage[]>([]);
 export const isConnected = writable(false);
 export const isStreaming = writable(false);
 export const projectRoot = writable<string>('');
 export const editorType = writable<string>('vscode');
 export const projectName = writable<string>('');
+export const agentLogs = writable<AgentLogEntry[]>([]);
 
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -140,6 +147,14 @@ function handleMessage(msg: Record<string, unknown>): void {
 			}
 			return prev;
 		});
+	} else if (msg.type === 'agent_log') {
+		agentLogs.update((prev) => [...prev.slice(-499), msg.entry as AgentLogEntry]);
+	} else if (msg.type === 'agent_logs_history') {
+		const incoming = msg.entries as AgentLogEntry[];
+		agentLogs.update((prev) => {
+			const seen = new Set(prev.map((e) => e.ts + e.msg));
+			return [...incoming.filter((e) => !seen.has(e.ts + e.msg)), ...prev];
+		});
 	}
 }
 
@@ -238,6 +253,10 @@ export function sendRejectFeature(featureGroupId: string): void {
 export function sendAcceptNode(nodeId: string): void {
 	if (!ws || ws.readyState !== WebSocket.OPEN) return;
 	ws.send(JSON.stringify({ type: 'accept_node', node_id: nodeId }));
+}
+
+export function sendGetLogs(): void {
+	if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'get_logs' }));
 }
 
 export function sendEditFeature(content: string, featureGroupId: string, diagramContext: DiagramState): void {

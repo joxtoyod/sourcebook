@@ -2,13 +2,15 @@
 	import { onMount } from 'svelte';
 	import Canvas from '$lib/components/Canvas.svelte';
 	import CodePane from '$lib/components/CodePane.svelte';
+	import LogPane from '$lib/components/LogPane.svelte';
 	import FloatingChat from '$lib/components/FloatingChat.svelte';
 	import RequirementsPanel from '$lib/components/RequirementsPanel.svelte';
 	import VersionHistory from '$lib/components/VersionHistory.svelte';
 	import { diagram } from '$lib/stores/diagram';
-	import { connect, isConnected } from '$lib/ws';
+	import { connect, isConnected, sendGetLogs } from '$lib/ws';
 
 	let showHistory = false;
+	let showLogPane = false;
 
 	onMount(() => {
 		connect();
@@ -17,10 +19,18 @@
 	function closeHistory() {
 		showHistory = false;
 	}
+
+	function toggleLogPane() {
+		showLogPane = !showLogPane;
+		if (showLogPane) sendGetLogs();
+	}
 </script>
 
 <div class="workspace">
 	<Canvas />
+	{#if showLogPane}
+		<LogPane on:close={() => (showLogPane = false)} />
+	{/if}
 	<CodePane />
 	{#if $isConnected && $diagram.nodes.length === 0}
 		<div class="canvas-overlay">
@@ -34,6 +44,9 @@
 		<div class="top-left-overlay">
 			<button class="history-btn" on:click={() => (showHistory = !showHistory)}>
 				⟳ History
+			</button>
+			<button class="history-btn" class:log-active={showLogPane} on:click={toggleLogPane}>
+				◉ Log
 			</button>
 			{#if showHistory}
 				<VersionHistory on:close={closeHistory} />
@@ -84,5 +97,10 @@
 
 	.history-btn:hover {
 		border-color: #475569;
+	}
+
+	.history-btn.log-active {
+		border-color: #4f9cf9;
+		color: #4f9cf9;
 	}
 </style>
