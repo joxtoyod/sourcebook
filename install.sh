@@ -6,6 +6,7 @@ set -euo pipefail
 
 REPO="https://github.com/joxtoyod/sourcebook.git"
 INSTALL_DIR="${SOURCEBOOK_DIR:-$HOME/.sourcebook}"
+BRANCH="${SOURCEBOOK_BRANCH:-main}"
 MIN_PYTHON="3.11"
 MIN_NODE="20"
 
@@ -98,15 +99,17 @@ fi
 green "Installing Sourcebook to $INSTALL_DIR ..."
 
 if [ -d "$INSTALL_DIR/.git" ]; then
-  info "Existing installation found — updating..."
+  info "Existing installation found — updating (branch: $BRANCH)..."
   # Ensure docs are excluded before pulling (handles upgrades from older installs)
   git -C "$INSTALL_DIR" sparse-checkout set --no-cone '/*' '!/docs/' 2>/dev/null || true
-  git -C "$INSTALL_DIR" pull --ff-only --quiet
+  git -C "$INSTALL_DIR" fetch --quiet origin "$BRANCH"
+  git -C "$INSTALL_DIR" checkout --quiet "$BRANCH"
+  git -C "$INSTALL_DIR" reset --hard "origin/$BRANCH" --quiet
 else
-  info "Cloning repository (excluding docs)..."
+  info "Cloning repository (branch: $BRANCH, excluding docs)..."
   # --filter=blob:none skips downloading blobs the server would send for docs images
   # --sparse + sparse-checkout set keeps docs out of the working tree entirely
-  git clone --depth=1 --filter=blob:none --sparse --quiet "$REPO" "$INSTALL_DIR"
+  git clone --depth=1 --filter=blob:none --sparse --quiet --branch "$BRANCH" "$REPO" "$INSTALL_DIR"
   git -C "$INSTALL_DIR" sparse-checkout set --no-cone '/*' '!/docs/'
 fi
 
