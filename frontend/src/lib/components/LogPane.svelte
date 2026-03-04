@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher, tick } from 'svelte';
+	import { createEventDispatcher, afterUpdate } from 'svelte';
 	import { agentLogs, type AgentLogEntry } from '$lib/ws';
 
 	const dispatch = createEventDispatcher();
@@ -45,13 +45,11 @@
 	}
 
 	// Auto-scroll to bottom when new entries arrive
-	$: if ($agentLogs && logContainer && autoScroll) {
-		tick().then(() => {
-			if (logContainer) {
-				logContainer.scrollTop = logContainer.scrollHeight;
-			}
-		});
-	}
+	afterUpdate(() => {
+		if (autoScroll && logContainer) {
+			logContainer.scrollTop = logContainer.scrollHeight;
+		}
+	});
 
 	function onScroll() {
 		if (!logContainer) return;
