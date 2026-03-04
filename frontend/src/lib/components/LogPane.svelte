@@ -56,7 +56,7 @@
 	function onScroll() {
 		if (!logContainer) return;
 		const atBottom = logContainer.scrollHeight - logContainer.scrollTop - logContainer.clientHeight < 40;
-		autoScroll = atBottom;
+		if (autoScroll !== atBottom) autoScroll = atBottom;
 	}
 </script>
 
